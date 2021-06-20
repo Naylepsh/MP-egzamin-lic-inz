@@ -57,15 +57,26 @@
 
 (define (subquery query) (cadr query))
 
-(define (subdoc doc) (caddr doc))
+(define (doc-children doc) (caddr doc))
 
-(define (subquerable docs) (filter (lambda (doc) (not (p? doc))) docs))
+(define (flatten-once lst)
+  (apply append lst))
+
+(define (doc-descendants doc)
+  (if (p? doc)
+    null
+    (let* ([children (doc-children doc)]
+          [descendants (flatten-once (map doc-descendants (doc-subquerable children)))])
+      (append children descendants))))
+
+(define (doc-subquerable docs) (filter (lambda (doc) (not (p? doc))) docs))
 
 ; sample queries
-;; 'p?
+;; '(p?)
 ;; '(tag? "article")
 ;; '(in-children? (tag? "article")
 ;; '(in-children? (in-children? (tag? "article")))
+;; '(in-descendants? (p?))'
 
 (define (select-children expr children)
   (if (empty? children)
@@ -84,7 +95,11 @@
       [(in-children?? query) 
         (if (p? doc)
           #f
-          (select-children (select (subquery query)) (subdoc doc)))])))
+          (select-children (select (subquery query)) (doc-children doc)))]
+      [(in-descendants?? query)
+        (if (p? doc)
+          #f
+          (select-children (select (subquery query)) (doc-descendants doc)))])))
 
 (define (assert actual expected) (if (eq? actual expected) #t (raise 'assert-failed #t)))
 
@@ -103,7 +118,7 @@
 (define doc3 (make-elem "heading" (list lorem lorem)))
 (assert ((select query3) doc3) #f)
 
-; children query tests;
+; children query tests
 (define query4 '(in-children? (p?)))
 (define doc4 (make-elem "heading" (list lorem lorem)))
 (define res4 ((select query4) doc4))
@@ -121,3 +136,13 @@
 (define res6 ((select query6) doc5))
 (assert (length res6) 1)
 (assert (length (filter p? res6)) 1)
+
+; descendants query tests
+(assert (length (doc-descendants doc5)) 3)
+(define x (doc-descendants doc5))
+
+(define query7 '(in-descendants? (p?)))
+(define res7 ((select query7) doc5))
+(assert (length res7) 2)
+(assert (length (filter p? res7)) 2)
+
