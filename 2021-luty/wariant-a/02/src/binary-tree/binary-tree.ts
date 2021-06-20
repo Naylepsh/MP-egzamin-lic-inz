@@ -33,7 +33,6 @@ export const isBST = (tree: BinaryTree<number>) => {
   let prev = tree.root.value;
   let node: BinaryTreeNode<number> | Leaf | undefined;
   while ((node = stack.pop())) {
-    console.log({ node });
     if (!node || node instanceof Leaf) {
       continue;
     }
